@@ -1,0 +1,1269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ECHO — Cognitive Threat Hunter</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Inter:wght@300;400;500&display=swap');
+
+  :root {
+    --bg: #0D0F14;
+    --surface: #151A24;
+    --surface2: #1A2030;
+    --border: #1E2A3A;
+    --border2: #243040;
+    --green: #00FFB2;
+    --green-dim: #00FFB220;
+    --purple: #7B61FF;
+    --purple-dim: #7B61FF20;
+    --red: #FF4757;
+    --red-dim: #FF475720;
+    --yellow: #FFD700;
+    --yellow-dim: #FFD70020;
+    --success: #2ED573;
+    --white: #F0F4F8;
+    --muted: #8A9BB0;
+    --muted2: #4A5568;
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'Inter', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--white);
+    font-family: var(--sans);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: radial-gradient(circle, #1E2A3A 1px, transparent 1px);
+    background-size: 32px 32px;
+    opacity: 0.4;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .app {
+    position: relative;
+    z-index: 1;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 40px 24px;
+  }
+
+  header { margin-bottom: 40px; }
+
+  .header-top {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 8px;
+  }
+
+  .logo-mark {
+    width: 40px;
+    height: 40px;
+    border: 1px solid var(--green);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--mono);
+    font-size: 16px;
+    color: var(--green);
+    position: relative;
+  }
+
+  .logo-mark::before {
+    content: '';
+    position: absolute;
+    inset: 3px;
+    border: 1px solid var(--green-dim);
+  }
+
+  h1 {
+    font-family: var(--mono);
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--green);
+    letter-spacing: 6px;
+  }
+
+  .tagline {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-left: 56px;
+  }
+
+  /* ── SCREEN SYSTEM ── */
+  .screen { display: none; }
+  .screen.active { display: block; }
+
+  /* ── SHARED COMPONENTS ── */
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    overflow: hidden;
+    margin-bottom: 20px;
+  }
+
+  .panel-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 13px 20px;
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+  }
+
+  .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .panel-body { padding: 20px; }
+
+  .btn-primary {
+    background: var(--green);
+    color: var(--bg);
+    border: none;
+    padding: 12px 28px;
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.15s;
+    width: 100%;
+  }
+
+  .btn-primary:hover { background: #00DDAA; }
+  .btn-primary:disabled { background: var(--border2); color: var(--muted2); cursor: not-allowed; }
+
+  .btn-ghost {
+    background: transparent;
+    border: 1px solid var(--border2);
+    color: var(--muted);
+    padding: 10px 24px;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.15s;
+    width: 100%;
+    margin-top: 10px;
+  }
+
+  .btn-ghost:hover { border-color: var(--muted); color: var(--white); }
+
+  /* ── LIVE STATS BAR ── */
+  .stats-bar {
+    display: flex;
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    margin-bottom: 24px;
+  }
+
+  .stat-cell {
+    flex: 1;
+    background: var(--surface2);
+    padding: 12px 16px;
+    text-align: center;
+  }
+
+  .stat-val {
+    font-family: var(--mono);
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--green);
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+
+  .stat-lbl {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--muted2);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  /* ── SCREEN 1: INTAKE ── */
+  textarea {
+    width: 100%;
+    background: transparent;
+    border: none;
+    color: var(--white);
+    font-family: var(--mono);
+    font-size: 13px;
+    line-height: 1.8;
+    padding: 20px;
+    resize: vertical;
+    min-height: 180px;
+    outline: none;
+  }
+
+  textarea::placeholder { color: var(--muted2); }
+
+  .char-count {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted2);
+    padding: 8px 20px;
+    border-top: 1px solid var(--border);
+    background: var(--surface2);
+  }
+
+  /* ── SCREEN 2: DECLARATION ── */
+  .declare-question {
+    margin-bottom: 20px;
+  }
+
+  .declare-q-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted2);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .declare-q-text {
+    font-size: 14px;
+    color: var(--white);
+    line-height: 1.6;
+    margin-bottom: 12px;
+  }
+
+  .declare-input {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    color: var(--white);
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 12px 14px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  .declare-input:focus { border-color: var(--green); }
+
+  .ttp-select {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .ttp-opt {
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    color: var(--muted);
+    padding: 8px 14px;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.15s;
+    border-radius: 2px;
+  }
+
+  .ttp-opt:hover { border-color: var(--muted); color: var(--white); }
+  .ttp-opt.selected { border-color: var(--green); color: var(--green); background: var(--green-dim); }
+
+  /* ── SCREEN 3: HUNTING ── */
+  .hunt-screen {
+    text-align: center;
+    padding: 60px 0;
+  }
+
+  .scan-line {
+    width: 100%;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--green), transparent);
+    animation: scan 1.5s linear infinite;
+    margin-bottom: 32px;
+  }
+
+  @keyframes scan {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+  }
+
+  .hunt-label {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--green);
+    letter-spacing: 3px;
+    animation: pulse 1.5s ease-in-out infinite;
+    margin-bottom: 8px;
+  }
+
+  .hunt-sub {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted2);
+    letter-spacing: 2px;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  /* ── SCREEN 4: CONFRONTATION ── */
+  .confront-intro {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.7;
+    margin-bottom: 24px;
+    padding: 16px 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+  }
+
+  .flip-card {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    margin-bottom: 16px;
+  }
+
+  .flip-side {
+    background: var(--surface);
+    padding: 20px;
+  }
+
+  .flip-side-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .flip-side-label.you { color: var(--purple); }
+  .flip-side-label.hermes { color: var(--green); }
+
+  .flip-side-content {
+    font-size: 13px;
+    color: var(--white);
+    line-height: 1.6;
+  }
+
+  .outcome-badge {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    border-radius: 2px;
+    margin-top: 10px;
+  }
+
+  .outcome-signal { background: var(--green-dim); color: var(--green); border: 1px solid var(--green); }
+  .outcome-ghost { background: var(--red-dim); color: var(--red); border: 1px solid var(--red); }
+  .outcome-noise { background: var(--yellow-dim); color: var(--yellow); border: 1px solid var(--yellow); }
+
+  /* ── SCREEN 5: CHALLENGE ── */
+  .challenge-finding {
+    font-size: 14px;
+    color: var(--white);
+    line-height: 1.7;
+    padding: 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    margin-bottom: 20px;
+    border-left: 3px solid var(--green);
+  }
+
+  .challenge-q {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+
+  .timer-bar-track {
+    width: 100%;
+    height: 3px;
+    background: var(--border2);
+    margin-bottom: 20px;
+    overflow: hidden;
+  }
+
+  .timer-bar-fill {
+    height: 100%;
+    background: var(--green);
+    transition: width 1s linear;
+  }
+
+  .options-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+
+  .option-btn {
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    color: var(--muted);
+    padding: 16px;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: left;
+  }
+
+  .option-btn:hover:not(:disabled) { border-color: var(--green); color: var(--white); }
+  .option-btn.correct { border-color: var(--success); color: var(--success); background: #2ED57315; }
+  .option-btn.wrong { border-color: var(--red); color: var(--red); background: var(--red-dim); }
+  .option-btn:disabled { cursor: not-allowed; }
+
+  .challenge-feedback {
+    padding: 14px 16px;
+    font-size: 13px;
+    line-height: 1.6;
+    display: none;
+    margin-bottom: 16px;
+  }
+
+  .challenge-feedback.correct { background: #2ED57315; border: 1px solid var(--success); color: var(--success); }
+  .challenge-feedback.wrong { background: var(--red-dim); border: 1px solid var(--red); color: var(--red); }
+
+  .progress-dots {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+    margin-bottom: 20px;
+  }
+
+  .pdot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--border2);
+  }
+
+  .pdot.done-correct { background: var(--success); }
+  .pdot.done-wrong { background: var(--red); }
+  .pdot.current { background: var(--green); }
+
+  /* ── SCREEN 6: VERDICT ── */
+  .verdict-score {
+    font-family: var(--mono);
+    font-size: 80px;
+    font-weight: 700;
+    text-align: center;
+    line-height: 1;
+    margin: 24px 0 8px;
+  }
+
+  .verdict-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted2);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    text-align: center;
+    margin-bottom: 32px;
+  }
+
+  .verdict-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    margin-bottom: 24px;
+  }
+
+  .verdict-cell {
+    background: var(--surface);
+    padding: 16px;
+    text-align: center;
+  }
+
+  .verdict-cell-val {
+    font-family: var(--mono);
+    font-size: 24px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+
+  .verdict-cell-lbl {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--muted2);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  .integrity-bar-track {
+    width: 100%;
+    height: 8px;
+    background: var(--border2);
+    margin: 12px 0 24px;
+    overflow: hidden;
+  }
+
+  .integrity-bar-fill {
+    height: 100%;
+    transition: width 1.5s cubic-bezier(0.23, 1, 0.32, 1);
+    width: 0%;
+  }
+
+  /* TTP TABLE */
+  .ttp-table {
+    width: 100%;
+    border: 1px solid var(--border);
+    border-collapse: collapse;
+    margin-bottom: 20px;
+  }
+
+  .ttp-table th {
+    background: var(--surface2);
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted2);
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+    text-align: left;
+    font-weight: 400;
+  }
+
+  .ttp-table th:last-child { border-right: none; }
+
+  .ttp-table td {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+    background: var(--surface);
+    vertical-align: top;
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.6;
+    position: relative;
+  }
+
+  .ttp-table td:last-child { border-right: none; }
+  .ttp-table tr:last-child td { border-bottom: none; }
+
+  .ttp-name {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--white);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .sev-badge {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 2px;
+    display: inline-block;
+  }
+
+  .sev-critical { color: var(--red); background: var(--red-dim); border: 1px solid var(--red); }
+  .sev-high { color: var(--yellow); background: var(--yellow-dim); border: 1px solid var(--yellow); }
+  .sev-moderate { color: var(--purple); background: var(--purple-dim); border: 1px solid var(--purple); }
+  .sev-low { color: var(--success); background: #2ED57320; border: 1px solid var(--success); }
+
+  .left-bar { padding-left: 16px !important; }
+  .left-bar::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; }
+  .bar-critical::before { background: var(--red); }
+  .bar-high::before { background: var(--yellow); }
+  .bar-moderate::before { background: var(--purple); }
+  .bar-low::before { background: var(--success); }
+
+  .focus-box {
+    background: var(--purple-dim);
+    border: 1px solid var(--purple);
+    padding: 20px;
+    margin-bottom: 24px;
+    font-size: 14px;
+    color: var(--white);
+    line-height: 1.7;
+  }
+
+  .focus-lbl {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--purple);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .download-btn {
+    background: transparent;
+    border: 1px solid var(--green);
+    color: var(--green);
+    padding: 14px 32px;
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    cursor: pointer;
+    width: 100%;
+    transition: all 0.15s;
+    margin-bottom: 10px;
+  }
+
+  .download-btn:hover { background: var(--green-dim); }
+
+  .reset-btn {
+    background: transparent;
+    border: none;
+    color: var(--muted2);
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    cursor: pointer;
+    padding: 12px;
+    width: 100%;
+    transition: color 0.15s;
+  }
+
+  .reset-btn:hover { color: var(--muted); }
+
+  @media (max-width: 640px) {
+    h1 { font-size: 20px; }
+    .options-grid { grid-template-columns: 1fr; }
+    .flip-card { grid-template-columns: 1fr; }
+    .verdict-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header>
+    <div class="header-top">
+      <div class="logo-mark">⚡</div>
+      <h1>ECHO</h1>
+    </div>
+    <div class="tagline">Cognitive Threat Hunter · Vibe Coding Edition</div>
+  </header>
+
+  <!-- SCREEN 1: INTAKE -->
+  <div id="screen-intake" class="screen active">
+    <div class="panel">
+      <div class="panel-header">
+        <div class="dot" style="background:var(--green)"></div>
+        <span>Session Log Input</span>
+      </div>
+      <textarea id="session-input" placeholder="Paste your vibe coding session — conversations, errors, terminal output, decisions made..."></textarea>
+      <div class="char-count" id="char-count">0 characters</div>
+    </div>
+    <button class="btn-primary" onclick="goToDeclaration()">PROCEED TO PRE-HUNT DECLARATION →</button>
+  </div>
+
+  <!-- SCREEN 2: DECLARATION -->
+  <div id="screen-declare" class="screen">
+    <div class="panel">
+      <div class="panel-header">
+        <div class="dot" style="background:var(--purple)"></div>
+        <span>Pre-Hunt Declaration</span>
+        <span style="margin-left:auto;color:var(--muted2);font-size:9px">Commit before the evidence arrives</span>
+      </div>
+      <div class="panel-body">
+        <div class="declare-question">
+          <div class="declare-q-label">Question 01</div>
+          <div class="declare-q-text">What do you think your biggest cognitive blind spot was in this session?</div>
+          <input type="text" class="declare-input" id="decl-1" placeholder="Be specific — what did you avoid understanding?">
+        </div>
+        <div class="declare-question">
+          <div class="declare-q-label">Question 02</div>
+          <div class="declare-q-text">Did you feel like you understood what you were building, or just that it worked?</div>
+          <div class="ttp-select">
+            <div class="ttp-opt" onclick="selectDecl2(this, 'Understood it')">Understood it</div>
+            <div class="ttp-opt" onclick="selectDecl2(this, 'Just that it worked')">Just that it worked</div>
+            <div class="ttp-opt" onclick="selectDecl2(this, 'Somewhere in between')">Somewhere in between</div>
+          </div>
+        </div>
+        <div class="declare-question" style="margin-bottom:0">
+          <div class="declare-q-label">Question 03</div>
+          <div class="declare-q-text">Which TTP do you think appeared most in your session?</div>
+          <div class="ttp-select">
+            <div class="ttp-opt" onclick="selectDecl3(this, 'Borrowed Confidence')">Borrowed Confidence</div>
+            <div class="ttp-opt" onclick="selectDecl3(this, 'Shallow Resolution')">Shallow Resolution</div>
+            <div class="ttp-opt" onclick="selectDecl3(this, 'Pattern Blindness')">Pattern Blindness</div>
+            <div class="ttp-opt" onclick="selectDecl3(this, 'Premature Exit')">Premature Exit</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <button class="btn-primary" id="hunt-btn" onclick="startHunt()">LOCK IN & HUNT →</button>
+    <button class="btn-ghost" onclick="showScreen('screen-intake')">← Back</button>
+  </div>
+
+  <!-- SCREEN 3: HUNTING -->
+  <div id="screen-hunt" class="screen">
+    <div class="hunt-screen">
+      <div class="scan-line"></div>
+      <div class="hunt-label">HUNTING COGNITIVE PATTERNS...</div>
+      <div class="hunt-sub">Hermes is reading your session</div>
+    </div>
+  </div>
+
+  <!-- SCREEN 4: CONFRONTATION -->
+  <div id="screen-confront" class="screen">
+    <div class="panel">
+      <div class="panel-header">
+        <div class="dot" style="background:var(--purple)"></div>
+        <span>Confrontation</span>
+        <span style="margin-left:auto;color:var(--muted2);font-size:9px">Your declaration vs the evidence</span>
+      </div>
+      <div class="panel-body">
+        <div class="confront-intro" id="confront-summary"></div>
+        <div id="confront-cards"></div>
+      </div>
+    </div>
+    <button class="btn-primary" onclick="startChallenge()">PROCEED TO TTP CHALLENGE →</button>
+  </div>
+
+  <!-- SCREEN 5: CHALLENGE -->
+  <div id="screen-challenge" class="screen">
+    <div class="stats-bar">
+      <div class="stat-cell">
+        <div class="stat-val" id="ch-score">0</div>
+        <div class="stat-lbl">Score</div>
+      </div>
+      <div class="stat-cell">
+        <div class="stat-val" id="ch-progress">1/1</div>
+        <div class="stat-lbl">Finding</div>
+      </div>
+      <div class="stat-cell">
+        <div class="stat-val" id="ch-integrity" style="color:var(--success)">100%</div>
+        <div class="stat-lbl">Integrity</div>
+      </div>
+    </div>
+    <div class="progress-dots" id="progress-dots"></div>
+    <div class="panel">
+      <div class="panel-header">
+        <div class="dot" style="background:var(--red)"></div>
+        <span>TTP Attribution Challenge</span>
+        <span style="margin-left:auto;color:var(--yellow);font-family:var(--mono);font-size:10px" id="timer-display">20s</span>
+      </div>
+      <div class="panel-body">
+        <div class="timer-bar-track">
+          <div class="timer-bar-fill" id="timer-fill"></div>
+        </div>
+        <div class="challenge-finding" id="ch-finding"></div>
+        <div class="challenge-q">Which cognitive TTP does this finding map to?</div>
+        <div class="options-grid" id="options-grid"></div>
+        <div class="challenge-feedback" id="ch-feedback"></div>
+        <button class="btn-primary" id="ch-next-btn" style="display:none" onclick="nextChallenge()">NEXT FINDING →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCREEN 6: VERDICT -->
+  <div id="screen-verdict" class="screen">
+    <div class="panel">
+      <div class="panel-header">
+        <div class="dot" style="background:var(--green)"></div>
+        <span>Verdict</span>
+      </div>
+      <div class="panel-body">
+        <div class="verdict-score" id="v-score"></div>
+        <div class="verdict-label">Evidence Integrity Score</div>
+        <div class="integrity-bar-track">
+          <div class="integrity-bar-fill" id="v-bar"></div>
+        </div>
+        <div class="verdict-grid">
+          <div class="verdict-cell">
+            <div class="verdict-cell-val" id="v-signals" style="color:var(--green)">0</div>
+            <div class="verdict-cell-lbl">Signals</div>
+          </div>
+          <div class="verdict-cell">
+            <div class="verdict-cell-val" id="v-ghosts" style="color:var(--red)">0</div>
+            <div class="verdict-cell-lbl">Ghosts</div>
+          </div>
+          <div class="verdict-cell">
+            <div class="verdict-cell-val" id="v-correct" style="color:var(--success)">0</div>
+            <div class="verdict-cell-lbl">Correct TTPs</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="v-ttp-section"></div>
+
+    <div id="v-focus-section"></div>
+
+    <button class="download-btn" onclick="downloadReport()">↓ DOWNLOAD COGNITIVE THREAT REPORT</button>
+    <button class="reset-btn" onclick="resetApp()">← Run New Hunt</button>
+  </div>
+
+</div>
+
+<script>
+// ── STATE ──
+let gameData = null;
+let declarations = { q1: '', q2: '', q3: '' };
+let challengeIndex = 0;
+let score = 0;
+let integrity = 100;
+let signals = 0;
+let ghosts = 0;
+let correctTTPs = 0;
+let challengeResults = [];
+let timerInterval = null;
+let timerSeconds = 20;
+const TTPS = ['Borrowed Confidence', 'Shallow Resolution', 'Pattern Blindness', 'Premature Exit'];
+
+// ── UTILITIES ──
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0, 0);
+}
+
+function sevClass(s) {
+  if (!s) return 'moderate';
+  const v = s.toLowerCase();
+  if (v === 'critical') return 'critical';
+  if (v === 'high') return 'high';
+  if (v === 'low') return 'low';
+  return 'moderate';
+}
+
+function ttpColor(t) {
+  if (!t) return 'var(--purple)';
+  const v = (t || '').toLowerCase();
+  if (v.includes('borrowed')) return 'var(--red)';
+  if (v.includes('shallow')) return 'var(--yellow)';
+  if (v.includes('pattern')) return 'var(--purple)';
+  return 'var(--muted)';
+}
+
+// ── SCREEN 1 ──
+document.getElementById('session-input').addEventListener('input', function() {
+  document.getElementById('char-count').textContent = this.value.length + ' characters';
+});
+
+function goToDeclaration() {
+  const session = document.getElementById('session-input').value.trim();
+  if (session.length < 50) return alert('Paste a longer session log for an accurate hunt.');
+  showScreen('screen-declare');
+}
+
+// ── SCREEN 2 ──
+function selectDecl2(el, val) {
+  document.querySelectorAll('#screen-declare .declare-question:nth-child(2) .ttp-opt').forEach(o => o.classList.remove('selected'));
+  el.classList.add('selected');
+  declarations.q2 = val;
+}
+
+function selectDecl3(el, val) {
+  document.querySelectorAll('#screen-declare .declare-question:nth-child(3) .ttp-opt').forEach(o => o.classList.remove('selected'));
+  el.classList.add('selected');
+  declarations.q3 = val;
+}
+
+async function startHunt() {
+  declarations.q1 = document.getElementById('decl-1').value.trim();
+  if (!declarations.q1) return alert('Answer question 1 before proceeding.');
+  if (!declarations.q2) return alert('Select an answer for question 2.');
+  if (!declarations.q3) return alert('Select a TTP for question 3.');
+
+  showScreen('screen-hunt');
+
+  const session = document.getElementById('session-input').value.trim();
+  const prompt = `Run the echo-hunt skill on this vibe coding session log. Return ONLY valid JSON matching the echo-hunt skill schema, no extra text:\n\n${session}`;
+  const escaped = prompt.replace(/"/g, '\\"').replace(/\n/g, '\\n');
+
+  try {
+    const res = await fetch('/api/echo', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ session })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.raw || data.error);
+    gameData = data;
+    buildConfrontation();
+    showScreen('screen-confront');
+  } catch (err) {
+    alert('Hunt failed: ' + err.message);
+    showScreen('screen-declare');
+  }
+}
+
+// ── SCREEN 4: CONFRONTATION ──
+function buildConfrontation() {
+  const summary = gameData.sessionSummary || '';
+  document.getElementById('confront-summary').textContent = summary;
+
+  const cards = document.getElementById('confront-cards');
+  cards.innerHTML = '';
+
+  // Compare Q1 (blind spot) vs top confirmed finding
+  const topFinding = (gameData.confirmedFindings || []).find(f => f.confirmed);
+  const topTTP = (gameData.cognitiveTTPs || [])[0];
+
+  const q1Outcome = compareBlindSpot(declarations.q1, topTTP);
+  const q3Outcome = declarations.q3 === (topTTP ? topTTP.type : '') ? 'signal' : 'ghost';
+
+  if (q1Outcome === 'signal') signals++;
+  else ghosts++;
+  if (q3Outcome === 'signal') signals++;
+  else ghosts++;
+
+  const confrontations = [
+    {
+      you: `"${declarations.q1}"`,
+      hermes: topFinding ? topFinding.evidence : 'No confirmed findings.',
+      outcome: q1Outcome,
+      label: 'Your blind spot declaration vs what Hermes found'
+    },
+    {
+      you: `You predicted: ${declarations.q3}`,
+      hermes: `Hermes identified: ${topTTP ? topTTP.type : 'Unknown'}`,
+      outcome: q3Outcome,
+      label: 'Your TTP prediction vs top TTP identified'
+    }
+  ];
+
+  confrontations.forEach(c => {
+    const div = document.createElement('div');
+    div.innerHTML = `
+      <div style="font-family:var(--mono);font-size:9px;color:var(--muted2);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;margin-top:16px">${c.label}</div>
+      <div class="flip-card">
+        <div class="flip-side">
+          <div class="flip-side-label you">You declared</div>
+          <div class="flip-side-content">${c.you}</div>
+        </div>
+        <div class="flip-side">
+          <div class="flip-side-label hermes">Hermes found</div>
+          <div class="flip-side-content">${c.hermes}</div>
+          <div><span class="outcome-badge outcome-${c.outcome}">${c.outcome.toUpperCase()}</span></div>
+        </div>
+      </div>
+    `;
+    cards.appendChild(div);
+  });
+}
+
+function compareBlindSpot(declaration, topTTP) {
+  if (!topTTP || !declaration) return 'ghost';
+  const d = declaration.toLowerCase();
+  const type = (topTTP.type || '').toLowerCase();
+  if (d.includes('borrowed') && type.includes('borrowed')) return 'signal';
+  if (d.includes('shallow') && type.includes('shallow')) return 'signal';
+  if (d.includes('pattern') && type.includes('pattern')) return 'signal';
+  if (d.includes('premature') && type.includes('premature')) return 'signal';
+  if (d.includes('confidence') && type.includes('borrowed')) return 'signal';
+  if (d.includes('resolution') && type.includes('shallow')) return 'signal';
+  return 'ghost';
+}
+
+// ── SCREEN 5: CHALLENGE ──
+function startChallenge() {
+  challengeIndex = 0;
+  score = 0;
+  integrity = 100;
+  correctTTPs = 0;
+  challengeResults = [];
+
+  const challenges = (gameData.attributionChallenges || []).filter(c => c.finding && c.correctTTP);
+  if (challenges.length === 0) {
+    buildVerdict();
+    showScreen('screen-verdict');
+    return;
+  }
+
+  buildProgressDots(challenges.length);
+  updateStats();
+  showChallenge(challenges[challengeIndex]);
+  showScreen('screen-challenge');
+}
+
+function buildProgressDots(count) {
+  const el = document.getElementById('progress-dots');
+  el.innerHTML = '';
+  for (let i = 0; i < count; i++) {
+    const d = document.createElement('div');
+    d.className = 'pdot' + (i === 0 ? ' current' : '');
+    d.id = `pdot-${i}`;
+    el.appendChild(d);
+  }
+}
+
+function updateStats() {
+  document.getElementById('ch-score').textContent = score;
+  document.getElementById('ch-progress').textContent = `${challengeIndex + 1}/${(gameData.attributionChallenges || []).filter(c => c.finding).length}`;
+  const intEl = document.getElementById('ch-integrity');
+  intEl.textContent = Math.max(0, integrity) + '%';
+  intEl.style.color = integrity >= 70 ? 'var(--success)' : integrity >= 40 ? 'var(--yellow)' : 'var(--red)';
+}
+
+function showChallenge(challenge) {
+  clearTimer();
+  document.getElementById('ch-finding').textContent = challenge.finding;
+  document.getElementById('ch-feedback').style.display = 'none';
+  document.getElementById('ch-next-btn').style.display = 'none';
+
+  const allOptions = [challenge.correctTTP, ...(challenge.distractors || []).slice(0, 3)];
+  const shuffled = allOptions.sort(() => Math.random() - 0.5);
+
+  const grid = document.getElementById('options-grid');
+  grid.innerHTML = '';
+  shuffled.forEach(opt => {
+    const btn = document.createElement('button');
+    btn.className = 'option-btn';
+    btn.textContent = opt;
+    btn.onclick = () => selectOption(btn, opt, challenge);
+    grid.appendChild(btn);
+  });
+
+  startTimer(challenge);
+}
+
+function startTimer(challenge) {
+  timerSeconds = 20;
+  const fill = document.getElementById('timer-fill');
+  const display = document.getElementById('timer-display');
+  fill.style.transition = 'none';
+  fill.style.width = '100%';
+  display.textContent = '20s';
+  display.style.color = 'var(--yellow)';
+
+  setTimeout(() => {
+    fill.style.transition = 'width 20s linear';
+    fill.style.width = '0%';
+  }, 50);
+
+  timerInterval = setInterval(() => {
+    timerSeconds--;
+    display.textContent = timerSeconds + 's';
+    if (timerSeconds <= 5) display.style.color = 'var(--red)';
+    if (timerSeconds <= 0) {
+      clearTimer();
+      timeOut(challenge);
+    }
+  }, 1000);
+}
+
+function clearTimer() {
+  if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+}
+
+function timeOut(challenge) {
+  document.querySelectorAll('.option-btn').forEach(b => {
+    b.disabled = true;
+    if (b.textContent === challenge.correctTTP) b.classList.add('correct');
+  });
+  integrity = Math.max(0, integrity - 10);
+  challengeResults.push({ correct: false, timedOut: true });
+  showFeedback(false, `Time's up. The correct TTP was ${challenge.correctTTP}. ${challenge.explanation || ''}`, challenge);
+  updateStats();
+}
+
+function selectOption(btn, selected, challenge) {
+  clearTimer();
+  document.querySelectorAll('.option-btn').forEach(b => b.disabled = true);
+
+  const isCorrect = selected === challenge.correctTTP;
+
+  if (isCorrect) {
+    btn.classList.add('correct');
+    score += 15;
+    correctTTPs++;
+    challengeResults.push({ correct: true });
+  } else {
+    btn.classList.add('wrong');
+    integrity = Math.max(0, integrity - 10);
+    challengeResults.push({ correct: false });
+    document.querySelectorAll('.option-btn').forEach(b => {
+      if (b.textContent === challenge.correctTTP) b.classList.add('correct');
+    });
+  }
+
+  updateStats();
+  showFeedback(isCorrect, isCorrect ? `Correct. ${challenge.explanation || ''}` : `Incorrect. The correct TTP was ${challenge.correctTTP}. ${challenge.explanation || ''}`, challenge);
+
+  const dot = document.getElementById(`pdot-${challengeIndex}`);
+  if (dot) dot.className = 'pdot ' + (isCorrect ? 'done-correct' : 'done-wrong');
+}
+
+function showFeedback(correct, text, challenge) {
+  const el = document.getElementById('ch-feedback');
+  el.className = 'challenge-feedback ' + (correct ? 'correct' : 'wrong');
+  el.textContent = text;
+  el.style.display = 'block';
+  document.getElementById('ch-next-btn').style.display = 'block';
+  document.getElementById('ch-next-btn').textContent = isLastChallenge() ? 'SEE VERDICT →' : 'NEXT FINDING →';
+}
+
+function isLastChallenge() {
+  const challenges = (gameData.attributionChallenges || []).filter(c => c.finding);
+  return challengeIndex >= challenges.length - 1;
+}
+
+function nextChallenge() {
+  const challenges = (gameData.attributionChallenges || []).filter(c => c.finding);
+  challengeIndex++;
+
+  if (challengeIndex >= challenges.length) {
+    buildVerdict();
+    showScreen('screen-verdict');
+    return;
+  }
+
+  const next = document.getElementById(`pdot-${challengeIndex}`);
+  if (next) next.className = 'pdot current';
+  updateStats();
+  showChallenge(challenges[challengeIndex]);
+}
+
+// ── SCREEN 6: VERDICT ──
+function buildVerdict() {
+  const finalScore = Math.max(0, score + (signals * 10) - (ghosts * 15));
+  const scoreColor = integrity >= 70 ? 'var(--success)' : integrity >= 40 ? 'var(--yellow)' : 'var(--red)';
+
+  document.getElementById('v-score').textContent = Math.max(0, integrity);
+  document.getElementById('v-score').style.color = scoreColor;
+  document.getElementById('v-signals').textContent = signals;
+  document.getElementById('v-ghosts').textContent = ghosts;
+  document.getElementById('v-correct').textContent = correctTTPs;
+
+  setTimeout(() => {
+    const bar = document.getElementById('v-bar');
+    bar.style.background = scoreColor;
+    bar.style.width = Math.max(0, integrity) + '%';
+    bar.style.transition = 'width 1.5s cubic-bezier(0.23, 1, 0.32, 1)';
+  }, 100);
+
+  // TTP table
+  const ttps = (gameData.cognitiveTTPs || []).filter(t => t.type && t.description);
+  let ttpHtml = '';
+  if (ttps.length > 0) {
+    ttpHtml = `
+    <div class="panel" style="margin-bottom:20px">
+      <div class="panel-header">
+        <div class="dot" style="background:var(--red)"></div>
+        <span>Cognitive TTPs Identified</span>
+      </div>
+      <table class="ttp-table">
+        <thead><tr><th>TTP Type</th><th>Severity</th><th>Description</th></tr></thead>
+        <tbody>
+          ${ttps.map(t => {
+            const sc = sevClass(t.severity);
+            return `<tr>
+              <td class="left-bar bar-${sc}"><div class="ttp-name">${t.type}</div></td>
+              <td><span class="sev-badge sev-${sc}">${(t.severity||'moderate').toUpperCase()}</span></td>
+              <td>${t.description}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>`;
+  }
+  document.getElementById('v-ttp-section').innerHTML = ttpHtml;
+
+  // Focus
+  let focusHtml = '';
+  if (gameData.nextSessionFocus) {
+    focusHtml = `
+    <div class="focus-box">
+      <div class="focus-lbl">Next Session Focus</div>
+      ${gameData.nextSessionFocus}
+    </div>`;
+  }
+  document.getElementById('v-focus-section').innerHTML = focusHtml;
+}
+
+function downloadReport() {
+  if (!gameData) return;
+  const d = gameData;
+  let md = `# COGNITIVE THREAT REPORT\n\n`;
+  md += `**Evidence Integrity:** ${integrity}%\n`;
+  md += `**Score:** ${score}\n`;
+  md += `**Signals:** ${signals} | **Ghosts:** ${ghosts} | **Correct TTPs:** ${correctTTPs}\n\n`;
+  md += `---\n\n## Pre-Hunt Declarations\n\n`;
+  md += `**Blind spot declared:** ${declarations.q1}\n`;
+  md += `**Understanding level:** ${declarations.q2}\n`;
+  md += `**Predicted TTP:** ${declarations.q3}\n\n`;
+  if (d.sessionSummary) md += `---\n\n## Session Summary\n\n${d.sessionSummary}\n\n`;
+  md += `---\n\n## Hunt Hypotheses\n\n`;
+  (d.huntHypotheses || []).forEach(h => {
+    md += `**H${h.id}:** ${h.hypothesis}\n`;
+    if (h.ttp) md += `*TTP: ${h.ttp}*\n`;
+    md += '\n';
+  });
+  md += `---\n\n## Cognitive TTPs Identified\n\n`;
+  (d.cognitiveTTPs || []).forEach(t => {
+    md += `### ${t.type} [${(t.severity||'').toUpperCase()}]\n${t.description}\n\n`;
+  });
+  md += `---\n\n## Confirmed Findings\n\n`;
+  (d.confirmedFindings || []).forEach(f => {
+    md += `- **[${f.confirmed ? 'CONFIRMED' : 'CLEAR'}]** ${f.evidence}\n`;
+  });
+  md += `\n---\n\n## Genuine Understanding Moments\n\n`;
+  (d.genuineUnderstandingMoments || []).forEach(m => { md += `- ${m}\n`; });
+  if (d.nextSessionFocus) md += `\n---\n\n## Next Session Focus\n\n${d.nextSessionFocus}\n`;
+
+  const blob = new Blob([md], { type: 'text/markdown' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'echo-cognitive-threat-report.md';
+  a.click();
+}
+
+function resetApp() {
+  gameData = null;
+  declarations = { q1: '', q2: '', q3: '' };
+  challengeIndex = 0; score = 0; integrity = 100;
+  signals = 0; ghosts = 0; correctTTPs = 0;
+  challengeResults = [];
+  clearTimer();
+  document.getElementById('session-input').value = '';
+  document.getElementById('char-count').textContent = '0 characters';
+  document.getElementById('decl-1').value = '';
+  document.querySelectorAll('.ttp-opt').forEach(o => o.classList.remove('selected'));
+  showScreen('screen-intake');
+}
+</script>
+</body>
+</html>
